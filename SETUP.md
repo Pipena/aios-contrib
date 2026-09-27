@@ -559,6 +559,14 @@ Merge `PreToolUse` alongside your existing `UserPromptSubmit` array — don't re
 
 Windows: the same entry with `"command": "python \"C:/Users/<you>/aios/hooks/guard-outward-action.py\""` (use the interpreter the probe below prints). Design: it **fails open** on a malformed hook payload but **fails closed** on its own question — no instruction from you on record means no send. Escape hatches, deliberate and logged in `~/aios/hooks/outward-gate.log`: `AIOS_ALLOW_OUTWARD=1` for one call, `touch ~/aios/hooks/.outward-gate-off` to disable. Gate a tool you added (a scheduler, an ads MCP) with `AIOS_OUTWARD_EXTRA="tool_name:publish"` and add it to the matcher.
 
+**Hook D, part 2 — `bus_log` (so a routine's prompt never counts as you).** The AIOS App and Glass deliver a spawn-inbox request by *typing* it into the target session, and the transcript records that exactly like you typing. Without this, a scheduled prompt that happens to say "sent" would unlock a send. `hooks/bus_log.py` fingerprints every request when it is written, and Hook D refuses a "typed" message whose fingerprint it finds (a prompt shaped `(HH:MM, launchd)` is refused regardless). Add next to Hook D, in the same `PreToolUse` array:
+
+```json
+{ "matcher": "Write|Edit", "hooks": [ { "type": "command", "command": "python3 ~/aios/hooks/bus_log.py --hook", "timeout": 10 } ] }
+```
+
+That covers every Claude session that writes to `~/.aios/spawn-inbox/`. Scripts that write request files directly (scheduled routines) are covered by a watcher on the inbox — on macOS, a LaunchAgent whose `ProgramArguments` run `python3 ~/aios/hooks/bus_log.py --sweep` with `WatchPaths` set to `~/.aios/spawn-inbox` and `ThrottleInterval` 1. It never blocks anything. Windows has no equivalent watcher yet; the `--hook` entry (with the Windows interpreter below) still covers session-written requests.
+
 **On Windows — the same three hooks, in the form that actually runs there.** Two names in the blocks above do not exist on a stock Windows install, and a setup session will otherwise find that out by trial:
 
 - **`pwsh`** is PowerShell 7, which the Windows prerequisites above never install. Use **`powershell`** (Windows PowerShell 5.1, present on every Windows 10/11) for these hooks — `inject-datetime.ps1`, `skills/setup.ps1` and `install-wrappers.ps1` all parse and run under 5.1. *(The spawn-wrapper installer is the one exception to "always `powershell`": it writes the profile of the PowerShell that runs it, so on a machine that has PowerShell 7 it runs under `pwsh` — see §9.)*

@@ -186,6 +186,21 @@ def main():
     ok_env = {t.strip() for t in os.environ.get("AIOS_OUTWARD_OK", "").split(",") if t.strip()}
     tp = data.get("transcript_path")
     text, is_answer = (last_instruction(tp) if tp and os.path.exists(tp) else (None, False))
+    # A "typed" record may be the spawn inbox typing on someone else's behalf: a scheduled routine,
+    # a dispatch from another session, a spawned worker's first prompt. The surfaces deliver by
+    # typing into the terminal, so the transcript records it exactly like the operator. bus_log.py
+    # fingerprints every request at write time; the "(HH:MM, launchd)" shape is refused as a floor
+    # for any writer the log missed.
+    if text and not is_answer:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import bus_log
+            bus = bus_log.is_bus_prompt(text)
+        except Exception:
+            bus = False
+        if bus or re.search(r"\(\d{1,2}:\d{2},\s*launchd\)", text):
+            block(f"{tool}: the latest 'typed' message came through the spawn inbox "
+                  f"(\"{text.strip()[:80]}\"), not from the operator.")
     if not text:
         if tool in ok_env:
             log(f"ALLOW (AIOS_OUTWARD_OK) {tool}")
