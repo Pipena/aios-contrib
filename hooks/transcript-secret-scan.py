@@ -40,6 +40,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCANNER = os.path.join(HERE, "git", "secret-scan.sh")
 NOTIFY_EVERY = 20 * 3600
+SCAN_VERSION = "1"      # bump when the matching rules change: every transcript is then read again
 # The report names transcript files, which can hold non-ASCII; a cp1252 console would otherwise stop the run.
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
@@ -203,11 +204,11 @@ def scan(root, store, pats):
     if not os.path.isdir(root):
         raise RuntimeError("transcripts folder %s does not exist: nothing was scanned" % root)
     state = store.load("state.json", {})
-    digest = hashlib.sha256(json.dumps([p for p, _k in pats]).encode()).hexdigest()[:16]
-    if state and (not os.path.exists(store.p("hits.json")) or state.get("_patterns") != digest):
-        state = {}                       # offsets without their hits, or scanned with an older pattern list: read it all again
-    state["_patterns"] = digest
+    digest = hashlib.sha256((SCAN_VERSION + json.dumps([p for p, _k in pats])).encode()).hexdigest()[:16]
     hits = store.load("hits.json", {})
+    if state and (not os.path.exists(store.p("hits.json")) or state.get("_patterns") != digest):
+        state, hits = {}, {}             # older pattern list or scan rules: read everything again and rebuild every hit
+    state["_patterns"] = digest
     rx = compile_patterns(pats)
     new = seen = 0
     errors = []
