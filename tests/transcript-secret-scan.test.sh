@@ -101,6 +101,10 @@ GH="ghp_$(printf 'Q1w2E3r4%.0s' 1 2 3 4)T5y6"
 entry "git clone https://$GH@example.com/org/repo.git" > "$R/s6.jsonl"; run scan >/dev/null 2>&1
 grep -q "\.\.\.T5y6" "$rep" && ok "a token inside an authenticated URL is found" || no "URL token missed"
 
+entry "diff:\\n+$HDR\\n+b3BlbnNzaC1rZXk" > "$R/s7.jsonl"; before=$(grep -c "private key" "$rep" || true); run scan >/dev/null 2>&1
+after=$(grep -c "private key" "$rep" || true)
+[ "$after" -gt "$before" ] && ok "a private key shown in a diff line is found" || no "diff-line key header missed"
+
 echo "── ack and notify ──"
 id=$(grep "Anthropic API key" "$rep" | head -1 | cut -d'|' -f2 | tr -d ' ')
 run ack "$id" >/dev/null 2>&1; run scan >/dev/null 2>&1

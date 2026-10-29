@@ -154,6 +154,8 @@ def standalone(line, m):
     before it and the one after the run must not be base64 characters, and the run must not be long. A key right after
     a JSON-escaped newline, tab or return, or after `//` (https://TOKEN@host), starts on its own. The only context veto is the text IMMEDIATELY
     before the match naming an attachment id or an image payload field, never ordinary words nearby."""
+    if m.group(0).startswith("-----BEGIN"):         # a key header is not base64 text (a diff line starts `+-----BEGIN`)
+        return True
     a, b = m.start(), m.end()
     while b < len(line) and line[b] in RUN:
         b += 1
