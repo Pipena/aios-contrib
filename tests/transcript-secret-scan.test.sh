@@ -108,6 +108,9 @@ after=$(grep -c "private key" "$rep" || true)
 DK="ghp_$(printf 'L1k2J3h4%.0s' 1 2 3 4)G5f6"
 entry "+$DK" > "$R/s8.jsonl"; run scan >/dev/null 2>&1
 grep -q "\.\.\.G5f6" "$rep" && ok "a token on a diff addition line is found" || no "diff-line token missed"
+RK="ghp_$(printf 'P1o2I3u4%.0s' 1 2 3 4)Y5t6"
+entry "-$RK" > "$R/s9.jsonl"; run scan >/dev/null 2>&1
+grep -q "\.\.\.Y5t6" "$rep" && ok "a token on a diff removal line is found" || no "removal-line token missed"
 
 echo "── ack and notify ──"
 id=$(grep "Anthropic API key" "$rep" | head -1 | cut -d'|' -f2 | tr -d ' ')

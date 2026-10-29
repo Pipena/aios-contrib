@@ -157,8 +157,8 @@ def standalone(line, m):
     while b < len(line) and line[b] in RUN:
         b += 1
     escaped_break = line[max(0, a - 2):a] in ("\\n", "\\t", "\\r", "//")   # a new line, or the start of a URL authority
-    if a > 0 and line[a - 1] == "+" and re.search(r"(\\[nrt]|[\"' ]|^)$", line[:a - 1]):
-        escaped_break = True                       # a diff addition line: `+TOKEN` at the start of a line
+    if a > 0 and line[a - 1] in "+-" and re.search(r"(\\[nrt]|[\"' ]|^)$", line[:a - 1]):
+        escaped_break = True                       # a diff addition or removal line: `+TOKEN` / `-TOKEN` at the start of a line
     if (a > 0 and line[a - 1] in B64 and not escaped_break) or (b < len(line) and line[b] in "+/") or b - a > MAX_RUN:
         return False
     return True
