@@ -97,6 +97,9 @@ grep -q "\.\.\.${GK: -4}" "$rep" && ok "a standalone Google key is still found" 
 grep -q "\.\.\.${GEM: -4}" "$rep" && ok "the newer Gemini shape (AQ.) is found" || no "AQ. key missed"
 grep -q "\.\.\.${GK2: -4}" "$rep" && ok "a nearby word 'attachment' does not hide a key" || no "key hidden by a nearby word"
 grep -q "\.\.\.4xyz" "$rep" && ok "a key right after an escaped newline is found" || no "key after newline missed"
+GH="ghp_$(printf 'Q1w2E3r4%.0s' 1 2 3 4)T5y6"
+entry "git clone https://$GH@example.com/org/repo.git" > "$R/s6.jsonl"; run scan >/dev/null 2>&1
+grep -q "\.\.\.T5y6" "$rep" && ok "a token inside an authenticated URL is found" || no "URL token missed"
 
 echo "── ack and notify ──"
 id=$(grep "Anthropic API key" "$rep" | head -1 | cut -d'|' -f2 | tr -d ' ')
