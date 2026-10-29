@@ -83,15 +83,20 @@ GK="AIza$(printf 'B1c2D3e4%.0s' 1 2 3 4)XyZ"          # 35 characters after the 
 GEM="AQ.$(printf 'Ab8RN6Kx%.0s' 1 2 3 4 5)"
 { entry "blob $(printf 'QUJD%.0s' 1 2 3 4 5 6 7 8 9 10)$GK$(printf 'REVG%.0s' 1 2 3 4 5 6 7 8 9 10)"
   entry "attachment_id: \\\"Xy$GK\\\""
-  entry "attachment $GK"; } > "$R/s4.jsonl"
+  entry "attachmentId: $GK"; } > "$R/s4.jsonl"
 before=$(grep -c "^| " "$rep" || true)
 run scan >/dev/null 2>&1
 after=$(grep -c "^| " "$rep" || true)
 [ "$before" = "$after" ] && ok "base64 run / attachment id are not keys" || no "false positive" "$(cat "$rep")"
+GK2="AIza$(printf 'Z1x2C3v4%.0s' 1 2 3 4)bnc"
 entry "my key is $GK ok" > "$R/s5.jsonl"; entry "GOOGLE_API_KEY=$GEM" >> "$R/s5.jsonl"
+entry "attachment failed, my API key is $GK2" >> "$R/s5.jsonl"       # the word nearby is not a veto
+printf '{"type":"user","text":"line one\\n%s\\nlast"}\n' "AIza$(printf 'M1n2B3v4%.0s' 1 2 3 4)xyz" >> "$R/s5.jsonl"   # key right after a newline
 run scan >/dev/null 2>&1
 grep -q "\.\.\.${GK: -4}" "$rep" && ok "a standalone Google key is still found" || no "standalone key lost"
 grep -q "\.\.\.${GEM: -4}" "$rep" && ok "the newer Gemini shape (AQ.) is found" || no "AQ. key missed"
+grep -q "\.\.\.${GK2: -4}" "$rep" && ok "a nearby word 'attachment' does not hide a key" || no "key hidden by a nearby word"
+grep -q "\.\.\.4xyz" "$rep" && ok "a key right after an escaped newline is found" || no "key after newline missed"
 
 echo "── ack and notify ──"
 id=$(grep "Anthropic API key" "$rep" | head -1 | cut -d'|' -f2 | tr -d ' ')

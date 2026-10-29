@@ -145,18 +145,22 @@ RUN = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
 MAX_RUN = 200            # a real key is shorter than this; a base64 blob or an attachment id is not
 
 
+VETO = re.compile(r"""(attachment_?id["':= ]*|data:image/[a-z0-9.+-]+;base64,|"media_type":\s*"image/[a-z0-9.+-]+",\s*"data":\s*")$""", re.I)
+
+
 def standalone(line, m):
     """A pasted key stands alone. A match inside a longer base64 run (an image blob, an attachment id) is not one.
     The match is extended to the whole run of key characters (some patterns stop short of a key's end); the character
-    before it and the one after the run must not be base64 characters, the run must not be long, and the text just before
-    it must not say the data is an attachment or an image."""
+    before it and the one after the run must not be base64 characters, and the run must not be long. A key right after
+    a JSON-escaped newline, tab or return counts as starting its own line. The only context veto is the text IMMEDIATELY
+    before the match naming an attachment id or an image payload field, never ordinary words nearby."""
     a, b = m.start(), m.end()
     while b < len(line) and line[b] in RUN:
         b += 1
-    if (a > 0 and line[a - 1] in B64) or (b < len(line) and line[b] in "+/") or b - a > MAX_RUN:
+    escaped_break = line[max(0, a - 2):a] in ("\\n", "\\t", "\\r")
+    if (a > 0 and line[a - 1] in B64 and not escaped_break) or (b < len(line) and line[b] in "+/") or b - a > MAX_RUN:
         return False
-    ctx = line[max(0, a - 80):a].replace("\\", "").lower()      # tool output is JSON inside JSON: quotes arrive escaped
-    return not ("attachment" in ctx or "data:image" in ctx or '"media_type": "image' in ctx or '"media_type":"image' in ctx)
+    return not VETO.search(line[max(0, a - 120):a].replace("\\", ""))
 
 
 def day_of(line):
