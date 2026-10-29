@@ -140,6 +140,25 @@ def head_of(path):
         return ""
 
 
+B64 = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/_-")
+RUN = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+MAX_RUN = 200            # a real key is shorter than this; a base64 blob or an attachment id is not
+
+
+def standalone(line, m):
+    """A pasted key stands alone. A match inside a longer base64 run (an image blob, an attachment id) is not one.
+    The match is extended to the whole run of key characters (some patterns stop short of a key's end); the character
+    before it and the one after the run must not be base64 characters, the run must not be long, and the text just before
+    it must not say the data is an attachment or an image."""
+    a, b = m.start(), m.end()
+    while b < len(line) and line[b] in RUN:
+        b += 1
+    if (a > 0 and line[a - 1] in B64) or (b < len(line) and line[b] in "+/") or b - a > MAX_RUN:
+        return False
+    ctx = line[max(0, a - 80):a].replace("\\", "").lower()      # tool output is JSON inside JSON: quotes arrive escaped
+    return not ("attachment" in ctx or "data:image" in ctx or '"media_type": "image' in ctx or '"media_type":"image' in ctx)
+
+
 def day_of(line):
     try:
         t = json.loads(line).get("timestamp")
@@ -167,6 +186,8 @@ def scan_file(path, st, pats):
             line = raw.decode("utf-8", "ignore")
             for rx, kind in pats:
                 for m in rx.finditer(line):
+                    if not standalone(line, m):
+                        continue
                     v = m.group(0)
                     body = line[m.start(): m.end() + 240] if v.startswith("-----BEGIN") else v   # a key header is shared by every key
                     hits.append((kind, lines, hashlib.sha256(body.encode()).hexdigest()[:8], v[-4:], day_of(line)))

@@ -78,6 +78,21 @@ out=$(run scan 2>&1)
 n=$(grep -c "private key" "$rep" || true)
 [ "$n" -ge 2 ] && ok "two key rows" || no "private keys merged" "$(cat "$rep")"
 
+echo "── false positives: base64 and attachments; the newer Gemini shape ──"
+GK="AIza$(printf 'B1c2D3e4%.0s' 1 2 3 4)XyZ"          # 35 characters after the prefix, as real Google keys have
+GEM="AQ.$(printf 'Ab8RN6Kx%.0s' 1 2 3 4 5)"
+{ entry "blob $(printf 'QUJD%.0s' 1 2 3 4 5 6 7 8 9 10)$GK$(printf 'REVG%.0s' 1 2 3 4 5 6 7 8 9 10)"
+  entry "attachment_id: \\\"Xy$GK\\\""
+  entry "attachment $GK"; } > "$R/s4.jsonl"
+before=$(grep -c "^| " "$rep" || true)
+run scan >/dev/null 2>&1
+after=$(grep -c "^| " "$rep" || true)
+[ "$before" = "$after" ] && ok "base64 run / attachment id are not keys" || no "false positive" "$(cat "$rep")"
+entry "my key is $GK ok" > "$R/s5.jsonl"; entry "GOOGLE_API_KEY=$GEM" >> "$R/s5.jsonl"
+run scan >/dev/null 2>&1
+grep -q "\.\.\.${GK: -4}" "$rep" && ok "a standalone Google key is still found" || no "standalone key lost"
+grep -q "\.\.\.${GEM: -4}" "$rep" && ok "the newer Gemini shape (AQ.) is found" || no "AQ. key missed"
+
 echo "── ack and notify ──"
 id=$(grep "Anthropic API key" "$rep" | head -1 | cut -d'|' -f2 | tr -d ' ')
 run ack "$id" >/dev/null 2>&1; run scan >/dev/null 2>&1
