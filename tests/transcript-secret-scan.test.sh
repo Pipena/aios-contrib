@@ -83,14 +83,14 @@ GK="AIza$(printf 'B1c2D3e4%.0s' 1 2 3 4)XyZ"          # 35 characters after the 
 GEM="AQ.$(printf 'Ab8RN6Kx%.0s' 1 2 3 4 5)"
 { entry "blob $(printf 'QUJD%.0s' 1 2 3 4 5 6 7 8 9 10)$GK$(printf 'REVG%.0s' 1 2 3 4 5 6 7 8 9 10)"
   entry "attachment_id: \\\"Xy$GK\\\""
-  entry "attachmentId: $GK"; } > "$R/s4.jsonl"
+  entry "attachment_id: Xy$GK"; } > "$R/s4.jsonl"
 before=$(grep -c "^| " "$rep" || true)
 run scan >/dev/null 2>&1
 after=$(grep -c "^| " "$rep" || true)
 [ "$before" = "$after" ] && ok "base64 run / attachment id are not keys" || no "false positive" "$(cat "$rep")"
 GK2="AIza$(printf 'Z1x2C3v4%.0s' 1 2 3 4)bnc"
 entry "my key is $GK ok" > "$R/s5.jsonl"; entry "GOOGLE_API_KEY=$GEM" >> "$R/s5.jsonl"
-entry "attachment failed, my API key is $GK2" >> "$R/s5.jsonl"       # the word nearby is not a veto
+entry "attachment failed, my API key is $GK2" >> "$R/s5.jsonl"       # no word nearby hides a standalone key
 printf '{"type":"user","text":"line one\\n%s\\nlast"}\n' "AIza$(printf 'M1n2B3v4%.0s' 1 2 3 4)xyz" >> "$R/s5.jsonl"   # key right after a newline
 run scan >/dev/null 2>&1
 grep -q "\.\.\.${GK: -4}" "$rep" && ok "a standalone Google key is still found" || no "standalone key lost"
@@ -104,6 +104,10 @@ grep -q "\.\.\.T5y6" "$rep" && ok "a token inside an authenticated URL is found"
 entry "diff:\\n+$HDR\\n+b3BlbnNzaC1rZXk" > "$R/s7.jsonl"; before=$(grep -c "private key" "$rep" || true); run scan >/dev/null 2>&1
 after=$(grep -c "private key" "$rep" || true)
 [ "$after" -gt "$before" ] && ok "a private key shown in a diff line is found" || no "diff-line key header missed"
+
+DK="ghp_$(printf 'L1k2J3h4%.0s' 1 2 3 4)G5f6"
+entry "+$DK" > "$R/s8.jsonl"; run scan >/dev/null 2>&1
+grep -q "\.\.\.G5f6" "$rep" && ok "a token on a diff addition line is found" || no "diff-line token missed"
 
 echo "── ack and notify ──"
 id=$(grep "Anthropic API key" "$rep" | head -1 | cut -d'|' -f2 | tr -d ' ')
